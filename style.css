@@ -1,0 +1,149 @@
+/* #titulo {
+    color: #9f8e60;
+    text-align: center;
+  }
+  
+  #descripcion {
+    border: 1px solid #000;
+    border-radius: 5px;
+    padding: 10px;
+  }
+  
+  #descripcion p {
+    font-size: 18px;
+  }
+  
+   */
+
+body {
+    font-family: Arial, sans-serif;
+    background: #f2f2f2;
+    margin: 20px;
+  }
+  
+  h1 {
+    text-align: center;
+    margin-bottom: 20px;
+  }
+  
+  #candlestickChart {
+    max-width: 800px;
+    margin: 0 auto;
+    display: block;
+  }
+  
+ /* Basic reset */
+ html, body {
+    margin: 0;
+    padding: 0;
+    font: 10px sans-serif;
+  }
+
+  /* Container that holds the chart and text */
+  #modulo2 {
+    width: 80%;
+    /* set a min-height or any needed constraints */
+    min-height: 500px;
+  }
+
+  /* Text contexts */
+  #contexto1, #contexto2 {
+    margin: 0.5rem 1rem;
+    font-size: 14px;
+    color: #333;
+  }
+
+  /* Axes styling */
+  .ejeX path,
+  .ejeX line,
+  .ejeY path,
+  .ejeY line {
+    stroke: #ccc;
+  }
+  .domain {
+    display: none; /* hide the domain line for a cleaner look */
+  }
+  .ejeX text,
+  .ejeY text {
+    fill: #666;
+  }
+
+  /* Candlestick elements */
+  .candlestick line.wick {
+    stroke: #999;
+    stroke-width: 1;
+  }
+  .candlestick rect.body {
+    stroke: none;
+  }
+
+  /* Closing line styling */
+  .closingLine {
+    stroke: blue;
+    fill: none;
+    stroke-width: 2;
+  }
+
+/* Estilo del banner fijo */
+.fixed-banner {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 80px; /* Ajusta según necesidad */
+    background-color: #fff;
+    box-shadow: 0 4px 8px rgba(0,0,0,0.3); /* Sombra visible */
+    border-bottom: 1px solid #ccc;
+    display: flex;
+    align-items: center;
+    justify-content: center; /* Centra los elementos horizontalmente */
+    padding: 10px 20px;
+    box-sizing: border-box;
+    z-index: 999;
+}
+
+/* Contenedor del logo (SIEMPRE A LA IZQUIERDA) */
+.logo-container {
+    flex: 0 0 auto; /* Evita que el logo cambie de tamaño */
+    margin-right: 20px; /* Separación con el título */
+}
+
+/* Estilo de la imagen del logo */
+.banner-logo {
+    height: 60px; /* Ajusta según el tamaño del logo */
+    width: auto;
+}
+
+/* Contenedor del título (AHORA CENTRADO CORRECTAMENTE) */
+.title-container {
+    flex-grow: 1; /* Hace que el título ocupe el espacio central */
+    text-align: center;
+}
+
+/* Ajustes del título */
+.title-container h1 {
+    font-size: 2rem;
+    font-weight: bold;
+    margin: 0;
+}
+
+/* Ajuste del contenido para evitar que se oculte bajo el banner */
+.content {
+    margin-top: 100px; /* Ajusta según la altura del banner */
+    padding: 20px;
+    font-family: sans-serif;
+}
+
+.cryto-charts, .indicators {
+    padding-top: 120px;
+    margin-right: 100px;
+    font-size: 20px;
+}
+
+
+.crypto-icon {
+    width: 50px;   /* Set width to 30px */
+    height: 50px;  /* Set height to 30px */
+    object-fit: contain; /* Ensures the icon keeps its aspect ratio */
+}
+

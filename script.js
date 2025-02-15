@@ -7,8 +7,8 @@ function iniciarWebSocket() {
     preciosEndPoint = new WebSocket('wss://ws.coincap.io/prices?assets=bitcoin,ethereum,monero,litecoin');
 
     preciosEndPoint.onmessage = procesarNuevoMensaje;
-    
-    preciosEndPoint.onclose = function() {
+
+    preciosEndPoint.onclose = function () {
         console.warn("WebSocket Disconnected. Reconnecting in 5 seconds...");
         setTimeout(iniciarWebSocket, 5000); // Reconnect after 5s
     };
@@ -161,6 +161,28 @@ const svg = d3
     .attr('height', alto + margen.top + margen.bottom)
     .append('g')
     .attr('transform', `translate(${margen.left},${margen.top})`);
+
+// Append Y-axis Label (Price in USD)
+// Append Y-axis Label (Price in USD)
+svg.append("text")
+    .attr("class", "y-axis-label")
+    .attr("transform", "rotate(-90)") // Rotate text for Y-axis
+    .attr("y", -margen.left + 10) // Move left
+    .attr("x", -alto / 2) // Center vertically
+    .attr("text-anchor", "middle")
+    .style("font-size", "14px")
+    .style("fill", "#333")
+    .text("Price in USD");
+
+// Append X-axis Label (Time Interval - Last 2 Hours)
+svg.append("text")
+    .attr("class", "x-axis-label")
+    .attr("x", ancho / 2) // Center horizontally
+    .attr("y", alto + margen.bottom) // Position below X-axis
+    .attr("text-anchor", "middle")
+    .style("font-size", "14px")
+    .style("fill", "#333")
+    .text("Time - (Last 2 Hours & Intervals each 2 Min for each candle)");
 
 // Define X and Y scales
 const x = d3.scaleTime().range([0, ancho]);
@@ -360,7 +382,7 @@ var cryptoChart = new Chart(ctx, {
                     display: true,
                     text: 'Monero (USD)'
                 },
-                
+
                 offset: true
             }
         }
@@ -477,3 +499,10 @@ async function fetchMarketData() {
 fetchMarketData();
 
 setInterval(fetchMarketData, 60000);
+
+function showTooltip(id) {
+    document.getElementById(id).style.display = 'block';
+}
+function hideTooltip(id) {
+    document.getElementById(id).style.display = 'none';
+}

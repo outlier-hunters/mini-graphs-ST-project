@@ -1,8 +1,20 @@
 // Conexión WebSocket y arreglo de monedas se mantienen igual
+var preciosEndPoint;
+function iniciarWebSocket() {
+    if (preciosEndPoint) {
+        preciosEndPoint.close(); // Close any previous connection
+    }
+    preciosEndPoint = new WebSocket('wss://ws.coincap.io/prices?assets=bitcoin,ethereum,monero,litecoin');
 
-// WebSocket setup
-var preciosEndPoint = new WebSocket('wss://ws.coincap.io/prices?assets=bitcoin,ethereum,monero,litecoin');
-preciosEndPoint.onmessage = procesarNuevoMensaje;
+    preciosEndPoint.onmessage = procesarNuevoMensaje;
+    
+    preciosEndPoint.onclose = function() {
+        console.warn("WebSocket Disconnected. Reconnecting in 5 seconds...");
+        setTimeout(iniciarWebSocket, 5000); // Reconnect after 5s
+    };
+}
+
+iniciarWebSocket();
 
 // Coin data structure
 const monedas = [
@@ -43,45 +55,51 @@ function renderizarTarjetas() {
 renderizarTarjetas();
 
 
+// Máximo periodo de tiempo que queremos mantener (ej. 2 horas en ms)
+const MAX_TIMEFRAME = 2 * 60 * 60 * 1000;
+
 function procesarNuevoMensaje(mensaje) {
-    var mensajeJson = JSON.parse(mensaje.data);
+    const mensajeJson = JSON.parse(mensaje.data);
+    const now = Date.now(); // Marca de tiempo actual
 
-    for (var nombreMoneda in mensajeJson) {
-        for (var i = 0; i < monedas.length; i++) {
-            var objetoMoneda = monedas[i];
+    for (let nombreMoneda in mensajeJson) {
+        // Busca el objeto en el array 'monedas' correspondiente
+        const objetoMoneda = monedas.find(m => m.nombre === nombreMoneda);
+        if (!objetoMoneda) continue;
 
-            if (objetoMoneda.nombre === nombreMoneda) {
-                var nuevoPrecio = parseFloat(mensajeJson[nombreMoneda]);
+        // Parsear el nuevo precio
+        const nuevoPrecio = parseFloat(mensajeJson[nombreMoneda]);
 
-                // Store price history
-                objetoMoneda.datos.push({
-                    fecha: Date.now(),
-                    precio: nuevoPrecio,
-                });
+        // Agregar nuevo dato
+        objetoMoneda.datos.push({
+            fecha: now,
+            precio: nuevoPrecio,
+        });
 
-                // Update current price
-                objetoMoneda.precioActual = nuevoPrecio;
+        // 🚀 Prune: Filtra datos anteriores al periodo máximo
+        objetoMoneda.datos = objetoMoneda.datos.filter(d => d.fecha >= now - MAX_TIMEFRAME);
 
-                // Update highest price
-                if (!objetoMoneda.precioMasAlto || objetoMoneda.precioMasAlto < nuevoPrecio) {
-                    objetoMoneda.precioMasAlto = nuevoPrecio;
-                    document.getElementById(`high-${objetoMoneda.nombre}`).innerText = `$${nuevoPrecio.toFixed(2)}`;
-                }
+        // Actualizar precio actual
+        objetoMoneda.precioActual = nuevoPrecio;
 
-                // Update lowest price
-                if (!objetoMoneda.precioMasBajo || objetoMoneda.precioMasBajo > nuevoPrecio) {
-                    objetoMoneda.precioMasBajo = nuevoPrecio;
-                    document.getElementById(`low-${objetoMoneda.nombre}`).innerText = `$${nuevoPrecio.toFixed(2)}`;
-                }
+        // Actualizar precio más alto
+        if (!objetoMoneda.precioMasAlto || objetoMoneda.precioMasAlto < nuevoPrecio) {
+            objetoMoneda.precioMasAlto = nuevoPrecio;
+            document.getElementById(`high-${objetoMoneda.nombre}`).innerText = `$${nuevoPrecio.toFixed(2)}`;
+        }
 
-                // Update UI with new price
-                document.getElementById(`precio-${objetoMoneda.nombre}`).innerText = `$${nuevoPrecio.toFixed(2)}`;
+        // Actualizar precio más bajo
+        if (!objetoMoneda.precioMasBajo || objetoMoneda.precioMasBajo > nuevoPrecio) {
+            objetoMoneda.precioMasBajo = nuevoPrecio;
+            document.getElementById(`low-${objetoMoneda.nombre}`).innerText = `$${nuevoPrecio.toFixed(2)}`;
+        }
 
-                // Update the chart if the selected currency matches
-                if (nombreMoneda === menu.value) {
-                    actualizar(objetoMoneda);
-                }
-            }
+        // Actualizar la UI con el nuevo precio
+        document.getElementById(`precio-${objetoMoneda.nombre}`).innerText = `$${nuevoPrecio.toFixed(2)}`;
+
+        // Si la moneda coincide con la seleccionada en el menú, actualiza el gráfico de velas
+        if (nombreMoneda === menu.value) {
+            actualizar(objetoMoneda);
         }
     }
 }
@@ -129,10 +147,6 @@ function aggregateCandlesticks(data) {
     }
     return candles;
 }
-
-// Maximum timeframe (2 hours in milliseconds)
-const MAX_TIMEFRAME = 2 * 60 * 60 * 1000; // 2 hours
-
 // Maximum chart width
 const MAX_WIDTH = 1200;
 var margen = { top: 20, right: 40, bottom: 30, left: 50 };
@@ -264,6 +278,7 @@ menu.onchange = function () {
     actualizar(objetoMoneda);
 };
 
+//Price comparison
 
 // Obtenemos el contexto del canvas
 var ctx = document.getElementById('cryptoChart').getContext('2d');
@@ -345,7 +360,7 @@ var cryptoChart = new Chart(ctx, {
                     display: true,
                     text: 'Monero (USD)'
                 },
-                // Con offset se separa este eje del otro en el lado derecho
+                
                 offset: true
             }
         }
@@ -354,29 +369,23 @@ var cryptoChart = new Chart(ctx, {
 
 // Función para actualizar el chart con los datos de cada criptomoneda
 function updateCryptoChart() {
+    let bitcoinData = [];
+    let ethereumData = [];
+    let moneroData = [];
 
-    var bitcoinData = [];
-    var ethereumData = [];
-    var moneroData = [];
-    if (typeof monedas !== 'undefined') {
-        var btc = monedas.find(c => c.nombre === 'bitcoin');
-        var eth = monedas.find(c => c.nombre === 'ethereum');
-        var xmr = monedas.find(c => c.nombre === 'monero');
-        if (btc && btc.datos) {
-            bitcoinData = btc.datos.map(d => ({ x: new Date(d.fecha), y: d.precio }));
-        }
-        if (eth && eth.datos) {
-            ethereumData = eth.datos.map(d => ({ x: new Date(d.fecha), y: d.precio }));
-        }
-        if (xmr && xmr.datos) {
-            moneroData = xmr.datos.map(d => ({ x: new Date(d.fecha), y: d.precio }));
-        }
-    } else {
-        // En caso de que 'monedas' no esté definido, se pueden simular datos para fines de demostración.
-        var now = new Date();
-        bitcoinData.push({ x: now, y: Math.random() * 20000 + 10000 });
-        ethereumData.push({ x: now, y: Math.random() * 1500 + 500 });
-        moneroData.push({ x: now, y: Math.random() * 100 + 50 });
+    // Confiamos en que 'procesarNuevoMensaje' ya filtra los datos obsoletos
+    const btc = monedas.find(c => c.nombre === 'bitcoin');
+    const eth = monedas.find(c => c.nombre === 'ethereum');
+    const xmr = monedas.find(c => c.nombre === 'monero');
+
+    if (btc && btc.datos) {
+        bitcoinData = btc.datos.map(d => ({ x: new Date(d.fecha), y: d.precio }));
+    }
+    if (eth && eth.datos) {
+        ethereumData = eth.datos.map(d => ({ x: new Date(d.fecha), y: d.precio }));
+    }
+    if (xmr && xmr.datos) {
+        moneroData = xmr.datos.map(d => ({ x: new Date(d.fecha), y: d.precio }));
     }
 
     cryptoChart.data.datasets[0].data = bitcoinData;
@@ -386,13 +395,13 @@ function updateCryptoChart() {
     cryptoChart.update();
 }
 
+
 // Actualiza el gráfico cada 5 segundos sin interferir con la implementación anterior
 setInterval(updateCryptoChart, 5000);
 
 
 
 // Market Volume
-
 const volCtx = document.getElementById("bubbleChart").getContext("2d");
 
 // 🚀 Define fixed colors for each crypto asset
@@ -465,9 +474,6 @@ async function fetchMarketData() {
         console.error("Error fetching market data:", error);
     }
 }
-
-// Fetch initial data
 fetchMarketData();
 
-// Auto-refresh every 10 seconds
 setInterval(fetchMarketData, 60000);

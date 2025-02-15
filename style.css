@@ -26,12 +26,12 @@ body {
     margin-bottom: 20px;
   }
   
-  #candlestickChart {
+  /* #candlestickChart {
     max-width: 800px;
     margin: 0 auto;
     display: block;
   }
-  
+   */
  /* Basic reset */
  html, body {
     margin: 0;
@@ -48,7 +48,6 @@ body {
 
   /* Text contexts */
   #contexto1, #contexto2 {
-    margin: 0.5rem 1rem;
     font-size: 14px;
     color: #333;
   }
@@ -79,7 +78,7 @@ body {
 
   /* Closing line styling */
   .closingLine {
-    stroke: blue;
+    stroke: #02468f;
     fill: none;
     stroke-width: 2;
   }
@@ -122,9 +121,10 @@ body {
 
 /* Ajustes del título */
 .title-container h1 {
-    font-size: 2rem;
+    font-size: 2.5rem;
     font-weight: bold;
     margin: 0;
+    padding-right: 200px;
 }
 
 /* Ajuste del contenido para evitar que se oculte bajo el banner */
@@ -147,3 +147,56 @@ body {
     object-fit: contain; /* Ensures the icon keeps its aspect ratio */
 }
 
+
+/* 
+Description */
+.info-card {
+  background-color: #ffffff; /* White background */
+  padding: 30px;
+  border-radius: 10px;
+  max-width: 1000px; /* Match chart width */
+  margin: 40px auto;
+  box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.1);
+  border: 1px solid #ddd;
+}
+.info-card h2, .info-card h4 {
+  font-weight: bold;
+  color: #333;
+}
+.info-card p, .info-card ul li {
+  font-size: 18px;
+  color: #444;
+  line-height: 1.6;
+}
+.info-card ul {
+  padding-left: 20px;
+}
+.highlight {
+  font-weight: bold;
+  color: #02468f;
+}
+
+.bitcoin { background-color: #f39c12; } /* Bitcoin (orange) */
+.ethereum { background-color: #6a0dad; } /* Ethereum (purple) */
+.monero { background-color: #008080; } /* Monero (teal) */
+
+.highlight-white {
+  color: #ffffff; 
+}
+
+.chart-container {
+  display: flex;
+  justify-content: center;
+  margin-top: 20px;
+}
+canvas {
+  width: 100%;
+  max-width: 1200px;
+}
+
+
+.image-container img {
+  width: 100%;  
+  max-width: 1300px; /* Ensure it doesn't get too big */
+  height: auto; 
+}

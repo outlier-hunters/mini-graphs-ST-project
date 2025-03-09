@@ -2,82 +2,120 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8">
-  <title>Grafica 2</title>
-  <!-- Bootstrap CSS (CDN) -->
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <title>Animación de Coordenadas en Leaflet</title>
+  <!-- CSS de Leaflet -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
   <style>
-    /* Asegura que el SVG se ajuste al ancho del contenedor */
-    #chart2 svg {
-      width: 100%;
-      height: auto;
+    html, body, #map {
+      height: 100%;
+      margin: 0;
+      padding: 0;
     }
   </style>
 </head>
 <body>
-  <div class="container-fluid my-4">
-    <h1 class="mb-4">Grafica 2: Ejemplo con D3</h1>
-    <div id="chart2"></div>
-  </div>
+<div id="map"></div>
 
-  <!-- Bootstrap Bundle JS -->
-  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-  <!-- D3 -->
-  <script src="https://d3js.org/d3.v7.min.js"></script>
-  <script>
-    // Datos de ejemplo para la gráfica
-    const data = [30, 86, 168, 281, 303, 365];
-    const container = d3.select('#chart2');
-    const containerWidth = container.node().getBoundingClientRect().width;
-    const height = 300;
-    const margin = { top: 20, right: 20, bottom: 30, left: 40 };
-    const width = containerWidth; // Ancho dinámico según el contenedor
+<!-- Leaflet -->
+<script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+<!-- Papa Parse para leer el CSV -->
+<script src="https://cdn.jsdelivr.net/npm/papaparse@5.3.2/papaparse.min.js"></script>
+<script>
+  // 1. Crear el mapa centrado en EE.UU.
+  const map = L.map('map').setView([37.8, -96.9], 4);
 
-    // Crear SVG con viewBox para responsividad
-    const svg = container.append('svg')
-      .attr('viewBox', `0 0 ${width} ${height}`)
-      .attr('preserveAspectRatio', 'xMidYMid meet');
+  // 2. Añadir una capa base (OpenStreetMap)
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    maxZoom: 19,
+    attribution: '© OpenStreetMap'
+  }).addTo(map);
 
-    const y = d3.scaleLinear()
-      .domain([0, d3.max(data)])
-      .range([height - margin.bottom, margin.top]);
+  // Almacenar referencias a los círculos y colores de cada coordenada
+  let circles = {};
+  let colors = {};
 
-    const x = d3.scaleBand()
-      .domain(data.map((d, i) => i))
-      .range([margin.left, width - margin.right])
-      .padding(0.1);
+  // Función para generar un color aleatorio en formato hexadecimal
+  function getRandomColor() {
+    return `#${Math.floor(Math.random()*16777215).toString(16)}`;
+  }
 
-    // Dibujar barras
-    svg.selectAll('.bar')
-      .data(data)
-      .enter()
-      .append('rect')
-      .attr('class', 'bar')
-      .attr('x', (d, i) => x(i))
-      .attr('y', d => y(d))
-      .attr('width', x.bandwidth())
-      .attr('height', d => y(0) - y(d))
-      .attr('fill', 'teal');
+  // 3. Cargar y procesar el CSV
+  Papa.parse('data/df_migrantes_MAS_100K.csv', {
+    download: true,
+    header: true,
+    complete: function(results) {
+      let data = results.data;
 
-    // Eje X
-    svg.append("g")
-      .attr("transform", `translate(0,${height - margin.bottom})`)
-      .call(d3.axisBottom(x).tickFormat(i => `Item ${i+1}`))
-      .attr("font-size", "12px");
+      // Procesar cada fila: parsear fecha, cantidad y extraer coordenadas de "Localizacion"
+      data.forEach(row => {
+        row.date = new Date(row["Fecha_Registro_Completa"]);
+        row.cantidad = parseFloat(row["Cantidad_Personas"]);
+        const coordsStr = row["Localizacion"];
+        if (coordsStr) {
+          const coords = coordsStr.replace(/[()]/g, "").split(",");
+          row.lat = parseFloat(coords[0]);
+          row.lon = parseFloat(coords[1]);
+        }
+      });
 
-    // Eje Y
-    svg.append("g")
-      .attr("transform", `translate(${margin.left},0)`)
-      .call(d3.axisLeft(y))
-      .attr("font-size", "12px");
+      // Ordenar los datos cronológicamente
+      data.sort((a, b) => a.date - b.date);
 
-    // Título del gráfico
-    svg.append("text")
-      .attr("x", width / 2)
-      .attr("y", margin.top)
-      .attr("text-anchor", "middle")
-      .attr("font-size", "16px")
-      .attr("font-weight", "bold")
-      .text("Población Migrante");
-  </script>
+      // 4. Animar la aparición de puntos
+      let index = 0;
+      const interval = setInterval(() => {
+        if (index >= data.length) {
+          clearInterval(interval);
+          return;
+        }
+        const pt = data[index];
+        const key = `${pt.lat},${pt.lon}`; // Usamos la clave para agrupar datos en una misma ubicación
+
+        if (!colors[key]) {
+          colors[key] = getRandomColor(); // Asignar un color aleatorio a cada ubicación nueva
+        }
+
+        if (circles[key]) {
+          // Si el círculo ya existe, aumentar el radio de forma mucho más lenta
+          let newRadius = circles[key].getRadius() + Math.log1p(pt.cantidad) * 0.2;
+          circles[key].setRadius(newRadius);
+
+          // Actualizar el tooltip con la fecha más reciente
+          let totalCantidad = parseInt(circles[key].options.cantidadTotal || 0) + pt.cantidad;
+          circles[key].options.cantidadTotal = totalCantidad;
+          circles[key].options.ultimaFecha = pt.date.toLocaleDateString();
+
+          circles[key].bindPopup(
+            `<strong>${pt["Pais"]}</strong><br>` +
+            `Cantidad total: ${totalCantidad}<br>` +
+            `Última fecha registrada: ${circles[key].options.ultimaFecha}`
+          );
+        } else {
+          // Si no existe, crear un nuevo círculo
+          circles[key] = L.circleMarker([pt.lat, pt.lon], {
+            radius: Math.log1p(pt.cantidad) * 2, // Controlamos el tamaño inicial
+            color: colors[key],
+            fillColor: colors[key],
+            fillOpacity: 0.7,
+            cantidadTotal: pt.cantidad, // Guardamos el total de personas
+            ultimaFecha: pt.date.toLocaleDateString() // Guardamos la fecha más reciente
+          }).addTo(map);
+
+          // Agregar un popup con la información
+          circles[key].bindPopup(
+            `<strong>${pt["Pais"]}</strong><br>` +
+            `Cantidad total: ${pt.cantidad}<br>` +
+            `Última fecha registrada: ${pt.date.toLocaleDateString()}`
+          );
+        }
+
+        index++;
+      }, 100); // Intervalo más lento para mejor visualización
+    },
+    error: function(err) {
+      console.error("Error al cargar el CSV:", err);
+    }
+  });
+</script>
 </body>
 </html>

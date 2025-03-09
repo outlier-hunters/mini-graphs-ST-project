@@ -1,0 +1,21 @@
+{
+    "name": "simple-charts-project",
+    "version": "1.0.0",
+    "description": "Proyecto sencillo con Gulp, Bootstrap 5, Chart.js y D3 para servir gráficas en rutas separadas",
+    "main": "gulpfile.js",
+    "scripts": {
+      "start": "gulp"
+    },
+    "dependencies": {
+      "bootstrap": "^5.3.0",
+      "chart.js": "^3.7.1",
+      "d3": "^7.0.0"
+    },
+    "devDependencies": {
+      "gulp": "^4.0.2",
+      "gulp-connect": "^5.7.0"
+    },
+    "author": "",
+    "license": "ISC"
+  }
+  

@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Grafica 2</title>
+  <!-- Bootstrap CSS (CDN) -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <style>
+    /* Asegura que el SVG se ajuste al ancho del contenedor */
+    #chart2 svg {
+      width: 100%;
+      height: auto;
+    }
+  </style>
+</head>
+<body>
+  <div class="container-fluid my-4">
+    <h1 class="mb-4">Grafica 2: Ejemplo con D3</h1>
+    <div id="chart2"></div>
+  </div>
+
+  <!-- Bootstrap Bundle JS -->
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+  <!-- D3 -->
+  <script src="https://d3js.org/d3.v7.min.js"></script>
+  <script>
+    // Datos de ejemplo para la gráfica
+    const data = [30, 86, 168, 281, 303, 365];
+    const container = d3.select('#chart2');
+    const containerWidth = container.node().getBoundingClientRect().width;
+    const height = 300;
+    const margin = { top: 20, right: 20, bottom: 30, left: 40 };
+    const width = containerWidth; // Ancho dinámico según el contenedor
+
+    // Crear SVG con viewBox para responsividad
+    const svg = container.append('svg')
+      .attr('viewBox', `0 0 ${width} ${height}`)
+      .attr('preserveAspectRatio', 'xMidYMid meet');
+
+    const y = d3.scaleLinear()
+      .domain([0, d3.max(data)])
+      .range([height - margin.bottom, margin.top]);
+
+    const x = d3.scaleBand()
+      .domain(data.map((d, i) => i))
+      .range([margin.left, width - margin.right])
+      .padding(0.1);
+
+    // Dibujar barras
+    svg.selectAll('.bar')
+      .data(data)
+      .enter()
+      .append('rect')
+      .attr('class', 'bar')
+      .attr('x', (d, i) => x(i))
+      .attr('y', d => y(d))
+      .attr('width', x.bandwidth())
+      .attr('height', d => y(0) - y(d))
+      .attr('fill', 'teal');
+
+    // Eje X
+    svg.append("g")
+      .attr("transform", `translate(0,${height - margin.bottom})`)
+      .call(d3.axisBottom(x).tickFormat(i => `Item ${i+1}`))
+      .attr("font-size", "12px");
+
+    // Eje Y
+    svg.append("g")
+      .attr("transform", `translate(${margin.left},0)`)
+      .call(d3.axisLeft(y))
+      .attr("font-size", "12px");
+
+    // Título del gráfico
+    svg.append("text")
+      .attr("x", width / 2)
+      .attr("y", margin.top)
+      .attr("text-anchor", "middle")
+      .attr("font-size", "16px")
+      .attr("font-weight", "bold")
+      .text("Población Migrante");
+  </script>
+</body>
+</html>

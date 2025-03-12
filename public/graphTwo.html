@@ -11,9 +11,24 @@
       margin: 0;
       padding: 0;
     }
+    #controls {
+      position: absolute;
+      top: 10px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: white;
+      padding: 10px;
+      border-radius: 5px;
+      box-shadow: 0px 0px 5px rgba(0, 0, 0, 0.3);
+      z-index: 1000;
+    }
   </style>
 </head>
 <body>
+<div id="controls">
+  <label for="yearRange">Año: <span id="currentYear"></span></label>
+  <input type="range" id="yearRange" min="2000" max="2030" step="1" value="2010">
+</div>
 <div id="map"></div>
 
 <!-- Leaflet -->
@@ -30,9 +45,18 @@
     attribution: '© OpenStreetMap'
   }).addTo(map);
 
-  // Almacenar referencias a los círculos y colores de cada coordenada
+  // Almacenar referencias a los círculos, colores y datos
   let circles = {};
   let colors = {};
+  let allData = {}; // Diccionario con datos agrupados por año
+  let currentYear = 2013; // Año inicial
+
+  // Actualizar el valor del control deslizante
+  document.getElementById("currentYear").textContent = currentYear;
+  document.getElementById("yearRange").addEventListener("input", function () {
+    let selectedYear = parseInt(this.value);
+    updateMap(selectedYear);
+  });
 
   // Función para generar un color aleatorio en formato hexadecimal
   function getRandomColor() {
@@ -44,78 +68,114 @@
     download: true,
     header: true,
     complete: function(results) {
-      let data = results.data;
+      let rawData = results.data;
 
       // Procesar cada fila: parsear fecha, cantidad y extraer coordenadas de "Localizacion"
-      data.forEach(row => {
-        row.date = new Date(row["Fecha_Registro_Completa"]);
-        row.cantidad = parseFloat(row["Cantidad_Personas"]);
-        const coordsStr = row["Localizacion"];
+      rawData.forEach(row => {
+        let date = new Date(row["Fecha_Registro_Completa"]);
+        let cantidad = parseFloat(row["Cantidad_Personas"]);
+        let year = date.getFullYear();
+        let coordsStr = row["Localizacion"];
+
         if (coordsStr) {
-          const coords = coordsStr.replace(/[()]/g, "").split(",");
-          row.lat = parseFloat(coords[0]);
-          row.lon = parseFloat(coords[1]);
+          let coords = coordsStr.replace(/[()]/g, "").split(",");
+          let lat = parseFloat(coords[0]);
+          let lon = parseFloat(coords[1]);
+          let key = `${lat},${lon}`;
+
+          if (!allData[year]) {
+            allData[year] = {};
+          }
+
+          if (!allData[year][key]) {
+            allData[year][key] = {
+              lat: lat,
+              lon: lon,
+              cantidad: 0,
+              pais: row["Pais"],
+              ultimaFecha: date
+            };
+          }
+
+          // Acumular cantidad de personas en la coordenada del año
+          allData[year][key].cantidad += cantidad;
+
+          // Actualizar la fecha más reciente en la coordenada
+          if (date > allData[year][key].ultimaFecha) {
+            allData[year][key].ultimaFecha = date;
+          }
         }
       });
 
-      // Ordenar los datos cronológicamente
-      data.sort((a, b) => a.date - b.date);
-
-      // 4. Animar la aparición de puntos
-      let index = 0;
-      const interval = setInterval(() => {
-        if (index >= data.length) {
-          clearInterval(interval);
-          return;
-        }
-        const pt = data[index];
-        const key = `${pt.lat},${pt.lon}`; // Usamos la clave para agrupar datos en una misma ubicación
-
-        if (!colors[key]) {
-          colors[key] = getRandomColor(); // Asignar un color aleatorio a cada ubicación nueva
-        }
-
-        if (circles[key]) {
-          // Si el círculo ya existe, aumentar el radio de forma mucho más lenta
-          let newRadius = circles[key].getRadius() + Math.log1p(pt.cantidad) * 0.2;
-          circles[key].setRadius(newRadius);
-
-          // Actualizar el tooltip con la fecha más reciente
-          let totalCantidad = parseInt(circles[key].options.cantidadTotal || 0) + pt.cantidad;
-          circles[key].options.cantidadTotal = totalCantidad;
-          circles[key].options.ultimaFecha = pt.date.toLocaleDateString();
-
-          circles[key].bindPopup(
-            `<strong>${pt["Pais"]}</strong><br>` +
-            `Cantidad total: ${totalCantidad}<br>` +
-            `Última fecha registrada: ${circles[key].options.ultimaFecha}`
-          );
-        } else {
-          // Si no existe, crear un nuevo círculo
-          circles[key] = L.circleMarker([pt.lat, pt.lon], {
-            radius: Math.log1p(pt.cantidad) * 2, // Controlamos el tamaño inicial
-            color: colors[key],
-            fillColor: colors[key],
-            fillOpacity: 0.7,
-            cantidadTotal: pt.cantidad, // Guardamos el total de personas
-            ultimaFecha: pt.date.toLocaleDateString() // Guardamos la fecha más reciente
-          }).addTo(map);
-
-          // Agregar un popup con la información
-          circles[key].bindPopup(
-            `<strong>${pt["Pais"]}</strong><br>` +
-            `Cantidad total: ${pt.cantidad}<br>` +
-            `Última fecha registrada: ${pt.date.toLocaleDateString()}`
-          );
-        }
-
-        index++;
-      }, 100); // Intervalo más lento para mejor visualización
+      // Iniciar el mapa con el año por defecto
+      updateMap(currentYear);
     },
     error: function(err) {
       console.error("Error al cargar el CSV:", err);
     }
   });
+
+  // Función para actualizar el mapa cuando se cambia el año
+  function updateMap(selectedYear) {
+    document.getElementById("currentYear").textContent = selectedYear;
+
+    // Inicializar acumulado de personas
+    let accumulatedData = {};
+
+    // Recorrer los años desde 2000 hasta el año seleccionado
+    for (let year = 2000; year <= selectedYear; year++) {
+      if (allData[year]) {
+        Object.entries(allData[year]).forEach(([key, data]) => {
+          if (!accumulatedData[key]) {
+            accumulatedData[key] = {
+              lat: data.lat,
+              lon: data.lon,
+              cantidad: 0,
+              pais: data.pais,
+              ultimaFecha: data.ultimaFecha
+            };
+          }
+
+          // Acumular la cantidad de personas en la ubicación
+          accumulatedData[key].cantidad += data.cantidad;
+
+          // Actualizar la fecha más reciente
+          if (data.ultimaFecha > accumulatedData[key].ultimaFecha) {
+            accumulatedData[key].ultimaFecha = data.ultimaFecha;
+          }
+        });
+      }
+    }
+
+    // Actualizar los círculos en el mapa
+    Object.values(circles).forEach(circle => {
+      map.removeLayer(circle);
+    });
+    circles = {}; // Resetear el almacenamiento de círculos
+
+    // Dibujar los datos acumulados en el mapa
+    Object.entries(accumulatedData).forEach(([key, data]) => {
+      if (!colors[key]) {
+        colors[key] = getRandomColor(); // Asignar un color aleatorio a cada ubicación nueva
+      }
+
+      let radius = Math.log1p(data.cantidad) * 2; // Ajustar crecimiento del radio
+
+      circles[key] = L.circleMarker([data.lat, data.lon], {
+        radius: radius,
+        color: colors[key],
+        fillColor: colors[key],
+        fillOpacity: 0.7
+      }).addTo(map);
+
+      // Agregar popup con información
+      circles[key].bindPopup(
+        `<strong>${data.pais}</strong><br>` +
+        `Cantidad total: ${data.cantidad}<br>` +
+        `Última fecha registrada: ${data.ultimaFecha.toLocaleDateString()}`
+      );
+    });
+  }
 </script>
 </body>
 </html>
